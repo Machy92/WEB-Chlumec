@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nastavení hesla</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 500px;
+        }
+
+        #password-rules {
+            font-size: 0.9rem;
+            list-style-type: none;
+            padding-left: 0;
+            transition: all 0.3s ease-in-out;
+        }
+        #password-rules li {
+            color: #dc3545; 
+            margin-bottom: 0.3rem;
+            transition: color 0.3s;
+        }
+        #password-rules li.valid {
+            color: #198754; 
+            text-decoration: line-through;
+        }
+        #password-rules li .fa-solid {
+            width: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <h1 class="card-title text-center mb-4">Nastavte si heslo</h1>
+
+                <div id="message" class="alert d-none"></div>
+
+                <form id="password-form" class="d-none">
+                    <p>Vítejte! Zadejte prosím své nové heslo pro dokončení registrace.</p>
+                    
+                    <div class="mb-3">
+                        <label for="new-password" class="form-label">Nové heslo</label>
+                        <input type="password" id="new-password" class="form-control" required>
+                    </div>
+
+                    <ul id="password-rules" class="mb-3">
+                        <li id="length"><i class="fa-solid fa-xmark"></i> Alespoň 8 znaků</li>
+                        <li id="lowercase"><i class="fa-solid fa-xmark"></i> Alespoň jedno malé písmeno</li>
+                        <li id="uppercase"><i class="fa-solid fa-xmark"></i> Alespoň jedno VELKÉ písmeno</li>
+                        <li id="number"><i class="fa-solid fa-xmark"></i> Alespoň jedno číslo</li>
+                    </ul>
+
+                    <div class="d-grid">
+                        <button type="submit" id="submit-button" class="btn btn-primary" disabled>Uložit heslo a přihlásit se</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        const SUPABASE_URL = 'https://opytqyxheeezvwncboly.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9weXRxeXhoZWVlenZ3bmNib2x5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc2NDAyMTMsImV4cCI6MjA2MzIxNjIxM30.h_DdvClVy4-xbEkQ3AWQose3dqPaxPQ1gl-LaLhwtCE';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const form = document.getElementById('password-form');
+        const messageDiv = document.getElementById('message');
+        const passwordInput = document.getElementById('new-password');
+        const submitButton = document.getElementById('submit-button');
+
+        const ruleLength = document.getElementById('length');
+        const ruleLowercase = document.getElementById('lowercase');
+        const ruleUppercase = document.getElementById('uppercase');
+        const ruleNumber = document.getElementById('number');
+        const rules = [ruleLength, ruleLowercase, ruleUppercase, ruleNumber];
+
+        passwordInput.addEventListener('input', () => {
+            const pass = passwordInput.value;
+            let allValid = true;
+
+            if (pass.length >= 8) {
+                ruleLength.classList.add('valid');
+                ruleLength.querySelector('.fa-solid').className = 'fa-solid fa-check';
+            } else {
+                ruleLength.classList.remove('valid');
+                ruleLength.querySelector('.fa-solid').className = 'fa-solid fa-xmark';
+                allValid = false;
+            }
+
+            if (/[a-z]/.test(pass)) {
+                ruleLowercase.classList.add('valid');
+                ruleLowercase.querySelector('.fa-solid').className = 'fa-solid fa-check';
+            } else {
+                ruleLowercase.classList.remove('valid');
+                ruleLowercase.querySelector('.fa-solid').className = 'fa-solid fa-xmark';
+                allValid = false;
+            }
+            
+            if (/[A-Z]/.test(pass)) {
+                ruleUppercase.classList.add('valid');
+                ruleUppercase.querySelector('.fa-solid').className = 'fa-solid fa-check';
+            } else {
+                ruleUppercase.classList.remove('valid');
+                ruleUppercase.querySelector('.fa-solid').className = 'fa-solid fa-xmark';
+                allValid = false;
+            }
+
+            if (/\d/.test(pass)) {
+                ruleNumber.classList.add('valid');
+                ruleNumber.querySelector('.fa-solid').className = 'fa-solid fa-check';
+            } else {
+                ruleNumber.classList.remove('valid');
+                ruleNumber.querySelector('.fa-solid').className = 'fa-solid fa-xmark';
+                allValid = false;
+            }
+            
+            submitButton.disabled = !allValid;
+        });
+
+
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN') {
+                form.classList.remove('d-none');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            submitButton.disabled = true;
+            submitButton.textContent = 'Ukládám...';
+
+            const newPassword = passwordInput.value;
+            
+            const { data, error } = await supabase.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) {
+                messageDiv.textContent = 'Chyba: ' + error.message;
+                messageDiv.className = 'alert alert-danger d-block';
+                submitButton.disabled = false;
+                submitButton.textContent = 'Uložit heslo a přihlásit se';
+            } else {
+                messageDiv.textContent = 'Heslo bylo úspěšně nastaveno! Za 3 sekundy budete přesměrováni na přihlášení.';
+                messageDiv.className = 'alert alert-success d-block';
+                form.classList.add('d-none');
+                setTimeout(() => { window.location.href = '/login.php'; }, 3000);
+            }
+        });
+
+    </script>
+</body>
+</html>
